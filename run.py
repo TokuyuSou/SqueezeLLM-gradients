@@ -1,5 +1,6 @@
 import copy
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Sequence
 
@@ -197,11 +198,17 @@ def train():
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    if data_args.dataset == "c4":
+    if data_args.dataset == "wikitext2":
         from datautils import get_loaders
-        print("Calibration with C4 ")
-        dataloader, testloader = get_loaders(data_args.dataset,  model=model_args.model_name_or_path, seqlen=512,
-                                            nsamples=data_args.num_examples)
+        print("Calibration with wikitext2")
+        cache_dataloader_path = f"{training_args.cache_dir}/dataloader_{model_args.model_name_or_path.split('/')[-1]}_{data_args.dataset}_all.cache"
+        if os.path.exists(cache_dataloader_path):
+            dataloader = torch.load(cache_dataloader_path)
+            logging.info(f"load calibration from {cache_dataloader_path}")
+        else:
+            dataloader, testloader = get_loaders(data_args.dataset,  model=model_args.model_name_or_path, seqlen=512,
+                                                nsamples=data_args.num_examples)
+            torch.save(dataloader, cache_dataloader_path)
     else:
         raise NotImplementedError("Please define your own dataset here")
 
@@ -220,8 +227,7 @@ def train():
     # For other models, replace this with proper variable names for model and layers
     _model = model.model
     _layers = _model.layers
-    _model.set_devices()
-
+    _model.to("cuda" if torch.cuda.is_available() else "cpu")
     def square_grad_hook(grad):
         return grad.pow(2)
 
