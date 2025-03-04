@@ -198,9 +198,9 @@ def train():
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    if data_args.dataset == "wikitext2":
+    if data_args.dataset in ["wikitext2", "c4"]:
         from datautils import get_loaders
-        print("Calibration with wikitext2")
+        print(f"Calibration with {data_args.dataset}")
         cache_dataloader_path = f"{training_args.cache_dir}/dataloader_{model_args.model_name_or_path.split('/')[-1]}_{data_args.dataset}_all.cache"
         if os.path.exists(cache_dataloader_path):
             dataloader = torch.load(cache_dataloader_path)
